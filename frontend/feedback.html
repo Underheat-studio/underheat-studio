@@ -131,17 +131,17 @@
     const backBtn = document.getElementById("back-btn");
 
     const auth0Client = await auth0.createAuth0Client({
-      domain: "dev-4ltdfgozv6ve68zm.us.auth0.com",
-      clientId: "nq6P9QVnA0WT2GCls7JNl5Unj35l8oGz",
+      domain: "dev-2j6f0pfj7mazarrg.us.auth0.com",
+      clientId: "dJvMivNXim7K63M3LSCd6w7NP0IDOWac",
       authorizationParams: {
-        redirect_uri: "https://miniature-system-q7p4wgx7g96g2r95-5500.app.github.dev"
+        redirect_uri: window.location.origin
       }
     });
 
     logoutBtn.addEventListener("click", () => {
       auth0Client.logout({
         logoutParams: {
-          returnTo: "https://miniature-system-q7p4wgx7g96g2r95-5500.app.github.dev"
+          returnTo: window.location.origin
         }
       });
     });

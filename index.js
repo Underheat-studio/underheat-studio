@@ -59,7 +59,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     try {
-      const res = await fetch("http://localhost:4000/api/role", {
+      // Changed from hardcoded localhost:4000 to configurable API_BASE_URL
+      // API_BASE_URL is set in config.js and can be overridden via environment variables.
+      // For local dev, it defaults to localhost:4000; for production, it uses the Cloudflare Worker.
+      const res = await fetch(`${window.API_BASE_URL}/api/role`, {
         headers: { 
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"

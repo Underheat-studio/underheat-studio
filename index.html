@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UNDERHEAT Studio</title>
+
+  <link rel="icon" href="favicon.ico">
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Theme loads BEFORE page renders -->
+  <script src="theme.js"></script>
+
+  <!-- Webamp -->
+  <script src="https://unpkg.com/webamp@1.4.0/built/webamp.bundle.min.js"></script>
+
+  <!-- Auth0 SDK -->
+  <script src="https://cdn.auth0.com/js/auth0-spa-js/2.18/auth0-spa-js.production.js"></script>
+
+  <!-- API Configuration (must load before any scripts that use API endpoints) -->
+  <script src="config.js"></script>
+</head>
+
+<body>
+  <div class="page">
+
+    <!-- HEADER -->
+    <header class="header">
+      <div class="logo-container">
+        <img src="assets/logo.png" alt="UNDERHEAT" class="logo" id="main-logo">
+        <img src="assets/pride-logo.png" alt="UNDERHEAT PRIDE" class="pride-logo hidden" id="pride-logo">
+      </div>
+
+      <nav class="nav">
+        <span id="user-indicator" class="user-indicator"></span>
+
+        <div class="nav-row">
+          <button id="settingsBtn" class="btn ghost hidden">Settings</button>
+          <button id="adminBtn" class="btn ghost hidden">Admin Panel</button>
+        </div>
+
+        <button id="feedbackBtn" class="btn ghost">Feedback / Contact</button>
+
+        <div class="nav-row">
+          <button id="logoutBtn" class="btn ghost hidden">Logout</button>
+          <button id="loginBtn" class="btn primary">Login</button>
+        </div>
+      </nav>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="main">
+
+      <!-- PUBLIC GAMES -->
+      <section id="games" class="section">
+        <h2 class="section-title">Our Games</h2>
+
+        <div class="games-grid">
+
+          <!-- Ashes Till Tomorrow -->
+          <a href="att.html" class="game-card panel">
+            <img src="assets/placeholder.png" alt="Ashes Till Tomorrow" class="game-image">
+            <div class="game-info">
+              <h3>Ashes Till Tomorrow</h3>
+              <p>A narrative-driven atmospheric game featuring original music and environmental storytelling.</p>
+            </div>
+          </a>
+
+          <!-- Critter Land -->
+          <a href="ct.html" class="game-card panel">
+            <img src="assets/cl.png" alt="Critter Land" class="game-image">
+            <div class="game-info">
+              <h3>Critter Land</h3>
+              <p>An energetic action-adventure with memorable soundtrack and vibrant pixel art.</p>
+            </div>
+          </a>
+
+        </div>
+      </section>
+
+      <!-- GATED CONTENT -->
+      <section id="gated-content" class="section gated hidden">
+        <h2 class="section-title">Studio Tools</h2>
+
+        <section id="webamp-section" class="panel">
+          <div class="panel-header">
+            <h3>Webamp Player</h3>
+            <span class="panel-note">(Founder only)</span>
+          </div>
+
+          <button id="webamp-toggle" class="btn secondary hidden">Show Webamp Player</button>
+          <div id="webamp-container" class="webamp-embedded hidden"></div>
+        </section>
+
+      </section>
+    </main>
+
+    <!-- TEMP DEBUG PANEL -->
+<div id="debug-panel"
+     style="white-space: pre;
+            background: #111;
+            color: rgb(0, 142, 0);
+            padding: 10px;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 13px;
+            border: 1px solid #333;
+            display: none;">
+</div>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <p>© 2026 UNDERHEAT Studio. All rights reserved.</p>
+
+      <div class="footer-links-row">
+        <a href="tos.html">Terms of Service</a>
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="feedback.html">Feedback</a>
+      </div>
+
+      <div class="footer-links">
+        <h3>Net Neighbors</h3>
+        <ul>
+          <li><a href="https://webamp.org/" target="_blank" rel="noreferrer noopener">Webamp</a></li>
+        </ul>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- PRIDE MONTH LOGIC -->
+  <script>
+    const month = new Date().getMonth();
+    const mainLogo = document.getElementById("main-logo");
+    const prideLogo = document.getElementById("pride-logo");
+
+    if (month === 5) {
+      if (mainLogo) mainLogo.classList.add("hidden");
+      if (prideLogo) prideLogo.classList.remove("hidden");
+    }
+  </script>
+
+  <!-- MAIN SITE LOGIC -->
+  <script src="index.js"></script>
+</body>
+</html>

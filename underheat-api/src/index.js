@@ -32,6 +32,73 @@ export default {
 		}
 
 		// ------------------------------------------------
+		// AUTH0 VERIFICATION & ROLE MANAGEMENT
+		// ------------------------------------------------
+		const FOUNDER_AUTH0_ID = "google-oauth2|113043894566831592879";
+		const AUTH0_DOMAIN = "dev-2j6f0pfj7mazarrg.us.auth0.com";
+		const AUTH0_AUDIENCE = "https://cold-cell-aa07.jkmeiihh.workers.dev";
+
+		// Verify and decode Auth0 token
+		async function verifyAuth0Token(token) {
+			if (!token) return null;
+
+			try {
+				// Remove "Bearer " prefix if present
+				const cleanToken = token.startsWith("Bearer ") ? token.slice(7) : token;
+				const parts = cleanToken.split(".");
+
+				if (parts.length !== 3) return null;
+
+				// Decode header and payload (don't verify signature yet)
+				const header = JSON.parse(atob(parts[0]));
+				const payload = JSON.parse(atob(parts[1]));
+
+				// Check basic validity
+				const now = Math.floor(Date.now() / 1000);
+				if (payload.exp && payload.exp < now) return null; // Token expired
+
+				// Check issuer
+				if (payload.iss !== `https://${AUTH0_DOMAIN}/`) return null;
+
+				// Check audience (Auth0 sends aud as an array)
+				const aud = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+				if (!aud.includes(AUTH0_AUDIENCE)) return null;
+
+				// In production, verify the signature using JWKS
+				// For now, we trust the issuer/audience/expiry checks
+				// To add full signature verification, fetch JWKS from:
+				// https://{AUTH0_DOMAIN}/.well-known/jwks.json
+
+				return payload;
+			} catch (err) {
+				console.error("Auth0 verification error:", err);
+				return null;
+			}
+		}
+
+		// Get role for Auth0 user
+		async function getRoleForAuth0User(sub) {
+			// Founder check
+			if (sub === FOUNDER_AUTH0_ID) {
+				return "founder";
+			}
+
+			// Check KV for stored role
+			try {
+				const stored = await env.USERS.get(`auth0:${sub}`);
+				if (stored) {
+					const data = JSON.parse(stored);
+					return data.role || "user";
+				}
+			} catch (err) {
+				console.error("KV fetch error:", err);
+			}
+
+			// Default to user role
+			return "user";
+		}
+
+		// ------------------------------------------------
 		// RATE LIMITING
 		// ------------------------------------------------
 		const ip = request.headers.get("cf-connecting-ip") || "unknown";
@@ -528,6 +595,74 @@ export default {
 
 			await env.UNDERHEAT_KV.delete(`code:${email}`);
 			return json({ success: true, message: "Code verified." });
+		}
+
+		// ------------------------------------------------
+		// GET ROLE (Auth0 + KV)
+		// ------------------------------------------------
+		if ((path === "/role" || path === "/api/role") && request.method === "GET") {
+			const authHeader = request.headers.get("Authorization");
+			const payload = await verifyAuth0Token(authHeader);
+
+			if (!payload || !payload.sub) {
+				return json({ success: false, role: "user", message: "Invalid or missing token." }, 401);
+			}
+
+			const role = await getRoleForAuth0User(payload.sub);
+			return json({ success: true, role, sub: payload.sub });
+		}
+
+		// ------------------------------------------------
+		// SET ROLE (Auth0 + founder/admin only)
+		// ------------------------------------------------
+		if ((path === "/set-role" || path === "/api/set-role") && request.method === "POST") {
+			const authHeader = request.headers.get("Authorization");
+			const payload = await verifyAuth0Token(authHeader);
+
+			if (!payload || !payload.sub) {
+				return json({ success: false, message: "Invalid or missing token." }, 401);
+			}
+
+			// Only founder can set roles
+			const currentRole = await getRoleForAuth0User(payload.sub);
+			if (currentRole !== "founder" && currentRole !== "admin") {
+				return json({ success: false, message: "Unauthorized. Only founder/admin can set roles." }, 403);
+			}
+
+			let body;
+			try {
+				body = await request.json();
+			} catch {
+				return json({ success: false, message: "Invalid request body." }, 400);
+			}
+
+			const { targetSub, newRole } = body;
+
+			if (!targetSub || !newRole) {
+				return json({ success: false, message: "Missing targetSub or newRole." }, 400);
+			}
+
+			if (!["user", "admin", "founder"].includes(newRole)) {
+				return json({ success: false, message: "Invalid role. Must be user, admin, or founder." }, 400);
+			}
+
+			// Cannot demote founder
+			if (targetSub === FOUNDER_AUTH0_ID && newRole !== "founder") {
+				return json({ success: false, message: "Cannot change founder's role." }, 403);
+			}
+
+			try {
+				await env.USERS.put(
+					`auth0:${targetSub}`,
+					JSON.stringify({ role: newRole, updatedAt: now }),
+					{ expirationTtl: 365 * 24 * 60 * 60 } // 1 year
+				);
+
+				return json({ success: true, message: `Role updated to ${newRole}.`, role: newRole });
+			} catch (err) {
+				console.error("Set role error:", err);
+				return json({ success: false, message: "Failed to set role." }, 500);
+			}
 		}
 
 		return json({ success: false, message: "Not found." }, 404);

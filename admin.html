@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel — UNDERHEAT Studio</title>
+
+  <link rel="stylesheet" href="style.css">
+  <script src="theme.js"></script>
+
+  <!-- Auth0 SDK (official) -->
+  <script src="https://cdn.auth0.com/js/auth0-spa-js/2.18/auth0-spa-js.production.js"></script>
+
+  <!-- API Configuration (must load before admin.js) -->
+  <script src="config.js"></script>
+</head>
+
+<body>
+  <div class="page admin-layout">
+
+    <!-- SIDEBAR -->
+    <aside class="admin-sidebar panel">
+      <div class="sidebar-header">
+        <img src="assets/logo.png" class="sidebar-logo" alt="UNDERHEAT">
+        <h2>Admin Panel</h2>
+        <p class="small muted">Founder & Admin Only</p>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button id="nav-users" class="btn ghost sidebar-btn active">User Management</button>
+        <button id="nav-roles" class="btn ghost sidebar-btn">Role Editor</button>
+        <button id="nav-logs" class="btn ghost sidebar-btn">System Logs</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button id="back-btn" class="btn secondary full">← Back to Site</button>
+        <button id="logout-btn" class="btn danger full">Logout</button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="admin-main">
+
+      <!-- HEADER -->
+      <header class="admin-header panel">
+        <h1>UNDERHEAT Studio — Admin Dashboard</h1>
+        <span id="admin-user-indicator" class="admin-user-indicator"></span>
+      </header>
+
+      <!-- STATUS BOX -->
+      <section id="admin-status" class="panel admin-status-box hidden"></section>
+
+      <!-- USER MANAGEMENT -->
+      <section id="admin-users-section" class="panel admin-section">
+        <h2>User Management</h2>
+        <p class="small muted">View all users and assign roles.</p>
+
+        <div id="admin-user-list" class="admin-user-list large"></div>
+      </section>
+
+      <!-- ROLE EDITOR -->
+      <section id="admin-roles-section" class="panel admin-section hidden">
+        <h2>Role Editor</h2>
+        <p class="small muted">Assign roles manually using user IDs.</p>
+
+        <div class="role-editor">
+          <input id="role-user-id" class="input" placeholder="User ID">
+          <select id="role-select" class="input">
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+            <option value="founder">Founder</option>
+          </select>
+          <button id="apply-role-btn" class="btn primary">Apply Role</button>
+        </div>
+      </section>
+
+      <!-- SYSTEM LOGS -->
+      <section id="admin-logs-section" class="panel admin-section hidden">
+        <h2>System Logs</h2>
+        <p class="small muted">Coming soon.</p>
+      </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <p>© 2026 UNDERHEAT Studio</p>
+    </footer>
+
+  </div>
+
+  <!-- MAIN ADMIN LOGIC -->
+  <script src="admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login — UNDERHEAT Studio</title>
+  <link rel="stylesheet" href="style.css">
+
+  <!-- API Configuration (must load before login.js) -->
+  <script src="config.js"></script>
+</head>
+<body>
+
+<main class="main">
+
+  <section class="panel auth-panel">
+
+    <h2 id="auth-title">Login</h2>
+
+    <!-- LOGIN FORM -->
+    <div id="login-form">
+      <input id="login-email" placeholder="Email">
+      <input id="login-password" type="password" placeholder="Password">
+      <button id="login-btn">Login</button>
+
+      <p class="small">
+        No account?
+        <span class="link" id="show-register">Register</span>
+      </p>
+
+      <p id="login-status"></p>
+    </div>
+
+    <!-- REGISTER FORM -->
+    <div id="register-form" class="hidden">
+      <input id="reg-email" placeholder="Email">
+      <input id="reg-password" type="password" placeholder="Password">
+      <select id="reg-role">
+        <option value="user">User</option>
+        <option value="admin">Admin</option>
+        <option value="founder">Founder</option>
+      </select>
+
+      <button id="register-btn">Create Account</button>
+
+      <p class="small">
+        Already have an account?
+        <span class="link" id="show-login">Login</span>
+      </p>
+
+      <p id="register-status"></p>
+    </div>
+
+  </section>
+
+</main>
+
+<script src="/login.js"></script>
+</body>
+</html>

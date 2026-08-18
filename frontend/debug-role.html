@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug - Auth0 Role Check</title>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #0f0;
+      line-height: 1.6;
+    }
+    pre {
+      background: #000;
+      padding: 15px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 5px;
+    }
+    .success {
+      background: #0a3a0a;
+    }
+    .error {
+      background: #3a0a0a;
+    }
+    .info {
+      background: #0a1a3a;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      background: #0f0;
+      color: #000;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-family: monospace;
+    }
+    button:hover {
+      background: #0c0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Auth0 Role Debug</h1>
+  <div id="output" style="margin: 20px 0;"></div>
+  <div>
+    <button onclick="checkRole()">Check Role Now</button>
+    <button onclick="window.location.href='/'">Back to Home</button>
+  </div>
+
+  <script src="https://cdn.auth0.com/js/auth0-spa-js/9.21.2/auth0-spa-js.production.js"></script>
+  <script>
+    const output = document.getElementById("output");
+
+    function log(msg, type = "info") {
+      const div = document.createElement("div");
+      div.className = `status ${type}`;
+      div.textContent = msg;
+      output.appendChild(div);
+      console.log(msg);
+    }
+
+    async function checkRole() {
+      output.innerHTML = "";
+      log("=== ROLE CHECK STARTED ===");
+
+      try {
+        // Initialize Auth0
+        log("Initializing Auth0 client...", "info");
+        const client = await auth0.createAuth0Client({
+          domain: "dev-2j6f0pfj7mazarrg.us.auth0.com",
+          clientId: "dJvMivNXim7K63M3LSCd6w7NP0IDOWac",
+          authorizationParams: {
+            audience: "https://cold-cell-aa07.jkmeiihh.workers.dev",
+            scope: "openid profile email read:role write:role",
+            redirect_uri: window.location.origin
+          }
+        });
+        log("✓ Auth0 client initialized", "success");
+
+        // Check if authenticated
+        const isAuth = await client.isAuthenticated();
+        log(`Authenticated: ${isAuth}`, isAuth ? "success" : "error");
+
+        if (!isAuth) {
+          log("→ Not authenticated. Please log in first.", "error");
+          return;
+        }
+
+        // Get user
+        const user = await client.getUser();
+        log(`✓ User: ${user.email}`, "success");
+
+        // Get token
+        log("Fetching token...", "info");
+        let token;
+        try {
+          token = await client.getTokenSilently();
+          log(`✓ Token fetched (length: ${token.length})`, "success");
+        } catch (err) {
+          log(`✗ Token error: ${err.message}`, "error");
+          return;
+        }
+
+        // Decode token
+        log("Decoding token...", "info");
+        const parts = token.split(".");
+        const payload = JSON.parse(atob(parts[1]));
+        log(`✓ Token decoded`, "success");
+        log(`  sub: ${payload.sub}`);
+        log(`  aud: ${JSON.stringify(payload.aud)}`);
+
+        // Call backend
+        log("Calling /api/role endpoint...", "info");
+        const res = await fetch("http://localhost:4000/api/role", {
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        });
+
+        if (!res.ok) {
+          log(`✗ Backend returned status ${res.status}`, "error");
+          return;
+        }
+
+        const data = await res.json();
+        log(`✓ Backend response received`, "success");
+        log(`✓ ROLE: ${data.role.toUpperCase()}`, data.role === "founder" ? "success" : "info");
+        log(`✓ Sub: ${data.sub}`);
+
+        if (data.role === "founder") {
+          log("✓✓✓ YOU ARE THE FOUNDER ✓✓✓", "success");
+          log("Admin panel and Webamp should be visible on the home page!");
+        } else {
+          log("You are a regular user. Expected founder role.", "error");
+        }
+
+      } catch (err) {
+        log(`✗ Error: ${err.message}`, "error");
+      }
+
+      log("=== CHECK COMPLETE ===");
+    }
+
+    // Auto-check on load if already authenticated
+    window.addEventListener("load", async () => {
+      try {
+        const client = await auth0.createAuth0Client({
+          domain: "dev-2j6f0pfj7mazarrg.us.auth0.com",
+          clientId: "dJvMivNXim7K63M3LSCd6w7NP0IDOWac",
+          authorizationParams: {
+            audience: "https://cold-cell-aa07.jkmeiihh.workers.dev",
+            scope: "openid profile email read:role write:role",
+            redirect_uri: window.location.origin
+          }
+        });
+
+        const isAuth = await client.isAuthenticated();
+        if (isAuth) {
+          log("You are logged in. Running role check...", "info");
+          setTimeout(checkRole, 500);
+        } else {
+          log("Not logged in. Please log in first by visiting the home page.", "error");
+        }
+      } catch (err) {
+        log(`Init error: ${err.message}`, "error");
+      }
+    });
+  </script>
+</body>
+</html>

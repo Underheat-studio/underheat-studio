@@ -201,6 +201,70 @@ app.get("/api/auth/session", (req, res) => {
 });
 
 /* ============================================================
+   GET ROLE FROM AUTH0 TOKEN
+   ============================================================ */
+
+const FOUNDER_AUTH0_ID = "google-oauth2|113043894566831592879";
+
+app.get("/api/role", (req, res) => {
+  console.log("\n=== /api/role REQUEST ===");
+  console.log("Timestamp:", new Date().toISOString());
+  
+  try {
+    const authHeader = req.headers.authorization;
+    console.log("Authorization header present:", !!authHeader);
+    
+    if (!authHeader) {
+      console.log("→ No auth header, returning user role");
+      return res.json({ success: false, role: "user", message: "No token provided" });
+    }
+
+    // Extract token from "Bearer <token>"
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
+    console.log("Token length:", token.length);
+    
+    // Decode token WITHOUT verifying signature (JWT decode only)
+    const parts = token.split(".");
+    console.log("Token parts count:", parts.length);
+    
+    if (parts.length !== 3) {
+      console.log("→ Invalid token format, returning user role");
+      return res.json({ success: false, role: "user", message: "Invalid token format" });
+    }
+
+    try {
+      // Decode payload (part[1])
+      const payload = JSON.parse(Buffer.from(parts[1], "base64").toString("utf-8"));
+      
+      console.log("Token decoded successfully");
+      console.log("Token sub:", payload.sub);
+      console.log("Expected founder ID:", FOUNDER_AUTH0_ID);
+      console.log("Match:", payload.sub === FOUNDER_AUTH0_ID);
+      
+      // Check if this is the founder (hardcoded check)
+      if (payload.sub === FOUNDER_AUTH0_ID) {
+        console.log("✓ TOKEN RECOGNIZED AS FOUNDER");
+        console.log("→ Returning role: founder");
+        return res.json({ success: true, role: "founder", sub: payload.sub });
+      }
+
+      // Default to user role for other authenticated users
+      console.log("→ Token is NOT founder, returning user role");
+      console.log("Token sub:", payload.sub);
+      return res.json({ success: true, role: "user", sub: payload.sub });
+    } catch (decodeErr) {
+      console.error("✗ Failed to decode token payload:", decodeErr.message);
+      console.log("→ Returning user role due to decode error");
+      return res.json({ success: false, role: "user", message: "Failed to decode token" });
+    }
+  } catch (err) {
+    console.error("✗ /api/role endpoint error:", err);
+    res.status(500).json({ success: false, role: "user", message: "Server error" });
+  }
+});
+
+
+/* ============================================================
    ADMIN SETUP — DISABLED (Founder access managed via KV only)
    ============================================================ */
 

@@ -1,25 +1,46 @@
-import {
-	env,
-	createExecutionContext,
-	waitOnExecutionContext,
-	SELF,
-} from "cloudflare:test";
+import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
 import { describe, it, expect } from "vitest";
 import worker from "../src";
 
-describe("Hello World worker", () => {
-	it("responds with Hello World! (unit style)", async () => {
-		const request = new Request("http://example.com");
-		// Create an empty context to pass to `worker.fetch()`.
-		const ctx = createExecutionContext();
-		const response = await worker.fetch(request, env, ctx);
-		// Wait for all `Promise`s passed to `ctx.waitUntil()` to settle before running test assertions
-		await waitOnExecutionContext(ctx);
-		expect(await response.text()).toMatchInlineSnapshot(`"Hello World!"`);
-	});
+function makeEnv() {
+  return {
+    USERS: {
+      get: async () => null,
+      put: async () => {},
+      delete: async () => {},
+      list: async () => ({ keys: [] })
+    },
+    UNDERHEAT_KV: {
+      get: async () => null,
+      put: async () => {},
+      delete: async () => {}
+    },
+    VERIFIED_DOMAIN: "",
+    RESEND_API_KEY: "test-key"
+  };
+}
 
-	it("responds with Hello World! (integration style)", async () => {
-		const response = await SELF.fetch("http://example.com");
-		expect(await response.text()).toMatchInlineSnapshot(`"Hello World!"`);
-	});
+describe("UNDERHEAT worker smoke tests", () => {
+  it("supports OPTIONS preflight requests", async () => {
+    const request = new Request("http://example.com", { method: "OPTIONS" });
+    const ctx = createExecutionContext();
+    const response = await worker.fetch(request, makeEnv(), ctx);
+    await waitOnExecutionContext(ctx);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("access-control-allow-origin")).toBe("*");
+  });
+
+  it("returns JSON for an unknown route", async () => {
+    const request = new Request("http://example.com/unknown");
+    const ctx = createExecutionContext();
+    const response = await worker.fetch(request, makeEnv(), ctx);
+    await waitOnExecutionContext(ctx);
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({
+      success: false,
+      message: "Not found."
+    });
+  });
 });

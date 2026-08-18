@@ -47,7 +47,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       opts.body = body;
     }
 
-    const res = await fetch(path, opts);
+    // Changed from relative paths (which pointed to local proxy on localhost:5500)
+    // to use API_BASE_URL (configured in config.js).
+    // On GitHub Pages, this points to either localhost:4000 (local dev) or the Cloudflare Worker (production).
+    const url = `${window.API_BASE_URL}${path}`;
+    const res = await fetch(url, opts);
     return res.json();
   }
 

@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feedback — UNDERHEAT Studio</title>
+
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Auth0 SDK (official) -->
+  <script src="https://cdn.auth0.com/js/auth0-spa-js/2.18/auth0-spa-js.production.js"></script>
+
+  <!-- API Configuration (must load before feedback.js) -->
+  <script src="config.js"></script>
+
+  <style>
+    /* ========================================
+       FEEDBACK PAGE STYLING
+       ======================================== */
+    
+    body {
+      background-color: var(--background-color, #1a1a1a);
+      color: var(--text-color, #e0e0e0);
+    }
+
+    main.main {
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    .feedback-section {
+      margin-bottom: 3rem;
+      padding: 2rem;
+      background: rgba(255, 85, 0, 0.05);
+      border: 1px solid rgba(255, 85, 0, 0.2);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+    }
+
+    .feedback-section h2 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+      font-size: 1.5rem;
+      color: var(--primary-color, #ff5500);
+      text-shadow: 0 0 10px rgba(255, 85, 0, 0.3);
+    }
+
+    .feedback-section > .small.muted {
+      display: block;
+      margin-bottom: 1.5rem;
+      color: rgba(224, 224, 224, 0.6);
+      font-size: 0.85rem;
+    }
+
+    /* Form Groups */
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--text-color, #e0e0e0);
+      transition: color 0.2s;
+    }
+
+    .form-group label:hover {
+      color: var(--primary-color, #ff5500);
+    }
+
+    .form-group input[type="text"],
+    .form-group input[type="email"],
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 0.75rem;
+      background-color: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 85, 0, 0.3);
+      border-radius: 8px;
+      color: var(--text-color, #e0e0e0);
+      font-family: inherit;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+    }
+
+    .form-group input[type="text"]:focus,
+    .form-group input[type="email"]:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      outline: none;
+      background-color: rgba(0, 0, 0, 0.5);
+      border-color: var(--primary-color, #ff5500);
+      box-shadow: 0 0 12px rgba(255, 85, 0, 0.2);
+    }
+
+    .form-group textarea {
+      min-height: 120px;
+      resize: vertical;
+      font-family: 'Courier New', monospace;
+    }
+
+    /* Checkbox styling */
+    .form-group input[type="checkbox"] {
+      margin-right: 0.5rem;
+      cursor: pointer;
+      width: 18px;
+      height: 18px;
+      accent-color: var(--primary-color, #ff5500);
+    }
+
+    .form-group label input[type="checkbox"] {
+      margin-bottom: 0;
+    }
+
+    /* File input */
+    .form-group input[type="file"] {
+      padding: 0.5rem;
+    }
+
+    /* Buttons */
+    .btn-row {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn.primary {
+      background: linear-gradient(135deg, var(--primary-color, #ff5500), var(--accent-color, #ff5500));
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(255, 85, 0, 0.3);
+    }
+
+    .btn.primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255, 85, 0, 0.4);
+    }
+
+    .btn.secondary {
+      background: rgba(255, 85, 0, 0.2);
+      color: var(--primary-color, #ff5500);
+      border: 1px solid var(--primary-color, #ff5500);
+    }
+
+    .btn.secondary:hover {
+      background: rgba(255, 85, 0, 0.3);
+    }
+
+    /* Status messages */
+    #pub-status,
+    #fb-status,
+    #admin-status {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      min-height: 1.5rem;
+    }
+
+    /* Community Wall */
+    #pub-list {
+      display: grid;
+      gap: 1.25rem;
+      margin-top: 1.5rem;
+    }
+
+    .post-card {
+      padding: 1.25rem;
+      background: rgba(0, 0, 0, 0.2);
+      border-left: 3px solid var(--primary-color, #ff5500);
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+
+    .post-card:hover {
+      background: rgba(0, 0, 0, 0.3);
+      transform: translateX(4px);
+    }
+
+    .post-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .post-author {
+      font-weight: 600;
+      color: var(--primary-color, #ff5500);
+    }
+
+    .post-time {
+      font-size: 0.8rem;
+      color: rgba(224, 224, 224, 0.5);
+    }
+
+    .post-message {
+      margin-bottom: 0.75rem;
+      line-height: 1.6;
+      word-wrap: break-word;
+    }
+
+    .post-image {
+      max-width: 100%;
+      max-height: 300px;
+      border-radius: 8px;
+      margin-top: 1rem;
+    }
+
+    .post-delete {
+      font-size: 0.85rem;
+      color: #ff6b6b;
+      cursor: pointer;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .post-delete:hover {
+      background: rgba(255, 107, 107, 0.2);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 2rem 1rem;
+      color: rgba(224, 224, 224, 0.5);
+    }
+
+    .empty-state p {
+      font-size: 0.95rem;
+    }
+
+    /* Admin Section */
+    #admin-section {
+      background: rgba(0, 255, 255, 0.03);
+      border-color: rgba(0, 255, 255, 0.2);
+    }
+
+    #admin-section h2 {
+      color: var(--neon-color, #00ffff);
+      text-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+    }
+
+    #admin-list {
+      display: grid;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .admin-note {
+      padding: 1rem;
+      background: rgba(0, 255, 255, 0.05);
+      border-left: 3px solid var(--neon-color, #00ffff);
+      border-radius: 8px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      main.main {
+        padding: 0 0.75rem;
+      }
+
+      .feedback-section {
+        padding: 1.5rem 1rem;
+      }
+
+      .feedback-section h2 {
+        font-size: 1.25rem;
+      }
+
+      .btn-row {
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header class="topbar">
+  <button id="back-btn" class="left">← Back</button>
+  <button id="logout-btn" class="right">Logout</button>
+</header>
+
+<main class="main">
+
+  <!-- PUBLIC FEEDBACK FORM -->
+  <section class="panel feedback-section">
+    <h2>Share Feedback</h2>
+    <p class="small muted">Post to the community wall (optional file attachment)</p>
+
+    <div class="form-group">
+      <label for="pub-author">Name (optional)</label>
+      <input id="pub-author" type="text" placeholder="Your name">
+    </div>
+
+    <div class="form-group">
+      <label for="pub-message">Message</label>
+      <textarea id="pub-message" placeholder="Share your thoughts..."></textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="pub-image">Attach File (optional)</label>
+      <input id="pub-image" type="file" accept="image/*">
+    </div>
+
+    <div class="form-group">
+      <label>
+        <input type="checkbox" id="pub-anonymous">
+        Post anonymously
+      </label>
+    </div>
+
+    <div class="btn-row">
+      <button id="pub-submit" class="btn primary">Post to Wall</button>
+    </div>
+    <p id="pub-status" class="small muted"></p>
+  </section>
+
+  <!-- COMMUNITY WALL -->
+  <section class="panel feedback-section">
+    <h2>Community Wall</h2>
+    <div id="pub-list"></div>
+  </section>
+
+  <!-- PRIVATE FEEDBACK FORM -->
+  <section class="panel feedback-section">
+    <h2>Private Feedback</h2>
+    <p class="small muted">Only visible to founder & admins</p>
+
+    <div class="form-group">
+      <label for="fb-name">Name (optional)</label>
+      <input id="fb-name" type="text" placeholder="Your name">
+    </div>
+
+    <div class="form-group">
+      <label for="fb-email">Email (optional)</label>
+      <input id="fb-email" type="email" placeholder="Your email">
+    </div>
+
+    <div class="form-group">
+      <label for="fb-type">Feedback Type</label>
+      <select id="fb-type">
+        <option>General Feedback</option>
+        <option>Bug Report</option>
+        <option>Feature Request</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="fb-message">Message</label>
+      <textarea id="fb-message" placeholder="Tell us what you think..."></textarea>
+    </div>
+
+    <div class="btn-row">
+      <button id="fb-submit" class="btn primary">Submit Private Feedback</button>
+    </div>
+    <p id="fb-status" class="small muted"></p>
+  </section>
+
+  <!-- ADMIN NOTES (founder/admin only) -->
+  <section class="panel feedback-section hidden" id="admin-section">
+    <h2>Admin Notes</h2>
+    <p class="small muted">Internal notes visible only to admins</p>
+
+    <div class="form-group">
+      <label for="admin-message">Note</label>
+      <textarea id="admin-message" placeholder="Internal note..."></textarea>
+    </div>
+
+    <div class="btn-row">
+      <button id="admin-submit" class="btn primary">Post Note</button>
+    </div>
+    <p id="admin-status" class="small muted"></p>
+    <div id="admin-list"></div>
+  </section>
+
+</main>
+
+<!-- FEEDBACK LOGIC -->
+<script src="feedback.js"></script>
+
+<!-- AUTH0 LOGOUT HANDLER -->
+<script>
+  document.addEventListener("DOMContentLoaded", async () => {
+    const logoutBtn = document.getElementById("logout-btn");
+    const backBtn = document.getElementById("back-btn");
+
+    const auth0Client = await auth0.createAuth0Client({
+      domain: "dev-2j6f0pfj7mazarrg.us.auth0.com",
+      clientId: "dJvMivNXim7K63M3LSCd6w7NP0IDOWac",
+      authorizationParams: {
+        redirect_uri: window.location.origin
+      }
+    });
+
+    logoutBtn.addEventListener("click", () => {
+      auth0Client.logout({
+        logoutParams: {
+          returnTo: window.location.origin
+        }
+      });
+    });
+
+    backBtn.addEventListener("click", () => {
+      window.location.href = "/index.html";
+    });
+  });
+</script>
+
+</body>
+</html>

@@ -58,7 +58,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ---------------------------------------------------------
   // API BASE URL
   // ---------------------------------------------------------
-  const API_BASE = "https://cold-cell-aa07.jkmeiihh.workers.dev";
+  // Changed from hardcoded Cloudflare Worker URL to use configurable API_BASE_URL
+  // (set in config.js). This allows GitHub Pages to use either localhost:4000 for local dev
+  // or the production Cloudflare Worker URL when deployed.
+  const API_BASE = window.API_BASE_URL || 'https://cold-cell-aa07.jkmeiihh.workers.dev';
 
   // ---------------------------------------------------------
   // API HELPER (FIXED)

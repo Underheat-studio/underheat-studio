@@ -1,0 +1,373 @@
+
+/* ------------------------------------------------------------
+   RESET
+------------------------------------------------------------ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  background: #0d0d0f;
+  color: #6a6a6a;
+  font-family: "Inter", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* ------------------------------------------------------------
+   GLOBAL COLORS
+------------------------------------------------------------ */
+
+:root {
+  --bg: #0d0d0f;
+  --bg-panel: #151518;
+  --bg-panel-light: #1d1d21;
+  --bg-hover: #222228;
+
+  --text: #f0f0f0;
+  --text-muted: #9a9a9a;
+
+  --primary: #ff6b00;
+  --primary-hover: #ff7f26;
+
+  --secondary: #3a3aff;
+  --secondary-hover: #5a5aff;
+
+  --border: #2a2a2f;
+  --radius: 10px;
+
+  --transition: 0.2s ease;
+}
+
+/* ------------------------------------------------------------
+   LAYOUT
+------------------------------------------------------------ */
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+  width: 100%;
+  max-width: 1200px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+
+/* ------------------------------------------------------------
+   HEADER
+------------------------------------------------------------ */
+
+.header {
+  width: 100%;
+  padding: 20px;
+  background: #111113;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+}
+
+.logo, .pride-logo {
+  height: 60px;
+  transition: opacity var(--transition);
+}
+
+.hidden {
+  display: none !important;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.nav-row {
+  display: flex;
+  gap: 10px;
+}
+
+.user-indicator {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+/* ------------------------------------------------------------
+   BUTTONS
+------------------------------------------------------------ */
+
+.btn {
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  border: none;
+  font-size: 0.95rem;
+  transition: var(--transition);
+}
+
+.btn.primary {
+  background: var(--primary);
+  color: #000;
+}
+
+.btn.primary:hover {
+  background: var(--primary-hover);
+}
+
+.btn.secondary {
+  background: var(--secondary);
+  color: #fff;
+}
+
+.btn.secondary:hover {
+  background: var(--secondary-hover);
+}
+
+.btn.ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.btn.ghost:hover {
+  background: var(--bg-hover);
+}
+
+/* ------------------------------------------------------------
+   PANELS
+------------------------------------------------------------ */
+
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 30px;
+  transition: var(--transition);
+}
+
+.panel:hover {
+  background: var(--bg-panel-light);
+}
+
+/* ------------------------------------------------------------
+   SECTIONS
+------------------------------------------------------------ */
+
+.section-title {
+  font-size: 1.8rem;
+  margin-bottom: 20px;
+}
+
+.section {
+  margin-bottom: 50px;
+}
+
+/* ------------------------------------------------------------
+   GAMES GRID
+------------------------------------------------------------ */
+
+.games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.game-card {
+  text-decoration: none;
+  color: var(--text);
+  transition: var(--transition);
+}
+
+.game-card:hover {
+  transform: translateY(-4px);
+}
+
+.game-image {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  border-radius: var(--radius);
+}
+
+.game-info {
+  margin-top: 10px;
+}
+
+/* ------------------------------------------------------------
+   AUTH MODAL
+------------------------------------------------------------ */
+
+.auth-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 50;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 25px;
+  animation: pop 0.25s ease;
+}
+
+@keyframes pop {
+  from { transform: scale(0.9); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+  color: var(--text-muted);
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: #0f0f11;
+  color: var(--text);
+}
+
+.auth-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.auth-message {
+  margin-top: 10px;
+  font-size: 0.9rem;
+  color: #ff4444;
+}
+
+/* ------------------------------------------------------------
+   GATED CONTENT
+------------------------------------------------------------ */
+
+.gated {
+  opacity: 0.5;
+}
+
+.gated:not(.hidden) {
+  opacity: 1;
+}
+
+/* ------------------------------------------------------------
+   WEBAMP
+------------------------------------------------------------ */
+
+.webamp-embedded {
+  margin-top: 20px;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/* ------------------------------------------------------------
+   DEBUG PANEL
+------------------------------------------------------------ */
+
+.debug-panel {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #111;
+  border: 1px solid var(--border);
+  padding: 15px;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  white-space: pre-line;
+  z-index: 40;
+}
+
+/* ------------------------------------------------------------
+   FOOTER
+------------------------------------------------------------ */
+
+.footer {
+  padding: 30px;
+  background: #111113;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+.footer-links-row {
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.footer-links {
+  margin-top: 20px;
+}
+
+.footer-links ul {
+  list-style: none;
+  margin-top: 10px;
+}
+
+.footer-links a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.footer-links a:hover {
+  text-decoration: underline;
+}
+
+/* ------------------------------------------------------------
+   RESPONSIVE
+------------------------------------------------------------ */
+
+@media (max-width: 600px) {
+  .nav {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .header {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .games-grid {
+    grid-template-columns: 1fr;
+  }
+}
