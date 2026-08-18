@@ -10,6 +10,12 @@
   <!-- Auth0 SDK (official) -->
   <script src="https://cdn.auth0.com/js/auth0-spa-js/2.18/auth0-spa-js.production.js"></script>
 
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+  <!-- Supabase Config -->
+  <script src="supabase.js"></script>
+
   <!-- API Configuration (must load before feedback.js) -->
   <script src="config.js"></script>
 
@@ -399,33 +405,7 @@
 <!-- FEEDBACK LOGIC -->
 <script src="feedback.js"></script>
 
-<!-- AUTH0 LOGOUT HANDLER -->
-<script>
-  document.addEventListener("DOMContentLoaded", async () => {
-    const logoutBtn = document.getElementById("logout-btn");
-    const backBtn = document.getElementById("back-btn");
-
-    const auth0Client = await auth0.createAuth0Client({
-      domain: "dev-2j6f0pfj7mazarrg.us.auth0.com",
-      clientId: "dJvMivNXim7K63M3LSCd6w7NP0IDOWac",
-      authorizationParams: {
-        redirect_uri: window.location.origin
-      }
-    });
-
-    logoutBtn.addEventListener("click", () => {
-      auth0Client.logout({
-        logoutParams: {
-          returnTo: window.location.origin
-        }
-      });
-    });
-
-    backBtn.addEventListener("click", () => {
-      window.location.href = "/index.html";
-    });
-  });
-</script>
+<!-- Note: logout and back button handlers are in feedback.js -->
 
 </body>
 </html>

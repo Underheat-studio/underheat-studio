@@ -104,6 +104,8 @@
             <option value="glass">Glass</option>
             <option value="solid">Solid</option>
             <option value="outline">Outline</option>
+            <option value="rounded">Rounded</option>
+            <option value="neon">Neon</option>
           </select>
         </div>
 
@@ -152,27 +154,31 @@
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
       const logoutBtn = document.getElementById("logout-btn");
-      const backBtn = document.getElementById("back-btn");
 
-      const auth0Client = await auth0.createAuth0Client({
-        domain: "dev-2j6f0pfj7mazarrg.us.auth0.com",
-        clientId: "dJvMivNXim7K63M3LSCd6w7NP0IDOWac",
-        authorizationParams: {
-          redirect_uri: window.location.origin
-        }
-      });
-
-      logoutBtn.addEventListener("click", () => {
-        auth0Client.logout({
-          logoutParams: {
-            returnTo: window.location.origin
+      try {
+        const auth0Client = await auth0.createAuth0Client({
+          domain: "dev-2j6f0pfj7mazarrg.us.auth0.com",
+          clientId: "dJvMivNXim7K63M3LSCd6w7NP0IDOWac",
+          authorizationParams: {
+            audience: "https://cold-cell-aa07.jkmeiihh.workers.dev",
+            scope: "openid profile email read:role write:role",
+            redirect_uri: window.location.origin
           }
         });
-      });
 
-      backBtn.addEventListener("click", () => {
-        window.location.href = "/index.html";
-      });
+        logoutBtn.addEventListener("click", () => {
+          auth0Client.logout({
+            logoutParams: {
+              returnTo: window.location.origin
+            }
+          });
+        });
+      } catch (e) {
+        console.warn("Auth0 init failed for logout:", e);
+        logoutBtn.addEventListener("click", () => {
+          window.location.href = "index.html";
+        });
+      }
     });
   </script>
 

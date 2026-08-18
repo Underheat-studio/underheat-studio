@@ -12,8 +12,6 @@ document.addEventListener("DOMContentLoaded", () => {
     uiScale: "1"
   };
 
-  // Load settings from unified localStorage key (shared with theme.js)
-  // This ensures settings persist across ALL pages
   function loadSettings() {
     try {
       const saved = JSON.parse(localStorage.getItem("uh_settings") || "{}");
@@ -23,14 +21,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Save settings to unified localStorage key and apply to page
   function saveSettings(settings) {
     localStorage.setItem("uh_settings", JSON.stringify(settings));
     localStorage.setItem("uh_settings_updated", Date.now());
     applyTheme(settings);
+    showSaveToast();
   }
 
-  // Apply settings to the page
   function applyTheme(s = loadSettings()) {
     root.style.setProperty("--primary-color", s.primary);
     root.style.setProperty("--secondary-color", s.secondary);
@@ -38,16 +35,42 @@ document.addEventListener("DOMContentLoaded", () => {
     root.style.setProperty("--background-color", s.background);
     root.style.setProperty("--neon-color", s.neon);
     root.style.setProperty("--ui-scale", s.uiScale);
-    
-    document.body.setAttribute("card-style", s.cardStyle);
-    document.body.setAttribute("font-style", s.fontStyle);
+
+    root.setAttribute("card-style", s.cardStyle);
+    root.setAttribute("font-style", s.fontStyle);
   }
 
-  // Initialize UI with saved settings
+  let toastTimer = null;
+  function showSaveToast() {
+    let toast = document.getElementById("save-toast");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "save-toast";
+      toast.style.cssText = `
+        position: fixed; bottom: 24px; right: 24px;
+        background: #00ff99; color: #000; padding: 12px 20px;
+        border-radius: 8px; font-weight: 600; font-size: 14px;
+        box-shadow: 0 4px 20px rgba(0,255,153,0.3);
+        opacity: 0; transform: translateY(10px);
+        transition: opacity 0.3s, transform 0.3s; z-index: 9999;
+      `;
+      document.body.appendChild(toast);
+    }
+    toast.textContent = "Settings saved";
+    requestAnimationFrame(() => {
+      toast.style.opacity = "1";
+      toast.style.transform = "translateY(0)";
+    });
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toast.style.opacity = "0";
+      toast.style.transform = "translateY(10px)";
+    }, 2000);
+  }
+
   function initializeUI() {
     const settings = loadSettings();
 
-    // Color inputs
     const colorMap = {
       "primary-color": "primary",
       "secondary-color": "secondary",
@@ -70,7 +93,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    // Card style
     const cardSelect = document.getElementById("card-style");
     if (cardSelect) {
       cardSelect.value = settings.cardStyle;
@@ -80,7 +102,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    // Font style
     const fontSelect = document.getElementById("font-style");
     if (fontSelect) {
       fontSelect.value = settings.fontStyle;
@@ -90,7 +111,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    // UI scale
     const scaleInput = document.getElementById("ui-scale");
     const scaleLabel = document.getElementById("scale-label");
     if (scaleInput) {
@@ -103,7 +123,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    // Reset button
     const resetBtn = document.getElementById("reset-settings");
     if (resetBtn) {
       resetBtn.addEventListener("click", () => {
@@ -111,11 +130,11 @@ document.addEventListener("DOMContentLoaded", () => {
         localStorage.setItem("uh_settings_updated", Date.now());
         applyTheme(DEFAULTS);
         initializeUI();
+        showSaveToast();
       });
     }
   }
 
-  // Navigation
   const backBtn = document.getElementById("back-btn");
   if (backBtn) {
     backBtn.addEventListener("click", () => {
@@ -126,12 +145,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const logoutBtn = document.getElementById("logout-btn");
   if (logoutBtn) {
     logoutBtn.addEventListener("click", () => {
-      localStorage.removeItem("token");
-      window.location.href = "index.html";
+      if (window.auth0Client) {
+        window.auth0Client.logout({
+          logoutParams: { returnTo: window.location.origin }
+        });
+      } else {
+        window.location.href = "index.html";
+      }
     });
   }
 
-  // Load and apply settings on page load
   applyTheme();
   initializeUI();
 });

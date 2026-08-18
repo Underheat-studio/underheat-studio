@@ -1,27 +1,24 @@
-// UNDERHEAT Studio — Feedback System (Auth0 + KV Roles + Worker API)
+// UNDERHEAT Studio — Feedback System (Auth0 + Supabase)
+
+const FOUNDER_AUTH0_ID = "google-oauth2|113043894566831592879";
 
 document.addEventListener("DOMContentLoaded", async () => {
 
-  // ---------------------------------------------------------
-  // AUTH0 INITIALIZATION
-  // ---------------------------------------------------------
   const auth0Client = await auth0.createAuth0Client({
     domain: "dev-2j6f0pfj7mazarrg.us.auth0.com",
     clientId: "dJvMivNXim7K63M3LSCd6w7NP0IDOWac",
     authorizationParams: {
+      audience: "https://cold-cell-aa07.jkmeiihh.workers.dev",
+      scope: "openid profile email read:role write:role",
       redirect_uri: window.location.origin
     }
   });
 
-  // Handle redirect callback (if returning from login)
   if (window.location.search.includes("code=") && window.location.search.includes("state=")) {
     await auth0Client.handleRedirectCallback();
     window.history.replaceState({}, "", window.location.pathname);
   }
 
-  // ---------------------------------------------------------
-  // GET TOKEN
-  // ---------------------------------------------------------
   async function getToken() {
     try {
       return await auth0Client.getTokenSilently();
@@ -30,34 +27,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  // ---------------------------------------------------------
-  // API HELPER
-  // ---------------------------------------------------------
-  async function api(path, method = "GET", body = null, isForm = false) {
-    const token = await getToken();
-
-    const opts = { method, headers: {} };
-
-    if (token) opts.headers["Authorization"] = `Bearer ${token}`;
-
-    if (body && !isForm) {
-      opts.headers["Content-Type"] = "application/json";
-      opts.body = JSON.stringify(body);
-    } else if (body && isForm) {
-      opts.body = body;
-    }
-
-    // Changed from relative paths (which pointed to local proxy on localhost:5500)
-    // to use API_BASE_URL (configured in config.js).
-    // On GitHub Pages, this points to either localhost:4000 (local dev) or the Cloudflare Worker (production).
-    const url = `${window.API_BASE_URL}${path}`;
-    const res = await fetch(url, opts);
-    return res.json();
-  }
-
-  // ---------------------------------------------------------
-  // USER + ROLE LOADING
-  // ---------------------------------------------------------
   let currentUser = null;
   let currentRole = "guest";
 
@@ -67,8 +36,36 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     currentUser = await auth0Client.getUser();
 
-    const roleRes = await api("/api/role");
-    currentRole = roleRes.role || "guest";
+    // Client-side founder check
+    const token = await getToken();
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        if (payload.sub === FOUNDER_AUTH0_ID) {
+          currentRole = "founder";
+        }
+      } catch (e) {
+        console.warn("Could not decode token:", e);
+      }
+    }
+
+    // Try backend for role if not already founder
+    if (currentRole !== "founder" && token) {
+      try {
+        const res = await fetch(`${window.API_BASE_URL}/api/role`, {
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.role) currentRole = data.role;
+        }
+      } catch (err) {
+        console.error("Failed to fetch role:", err.message);
+      }
+    }
 
     if (["admin", "founder"].includes(currentRole)) {
       document.getElementById("admin-section").classList.remove("hidden");
@@ -76,155 +73,249 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  // ---------------------------------------------------------
-  // NAVIGATION BUTTONS
-  // ---------------------------------------------------------
+  // Navigation
   document.getElementById("back-btn").onclick = () => {
     window.location.href = "/index.html";
   };
 
   document.getElementById("logout-btn").onclick = () => {
     auth0Client.logout({
-      logoutParams: {
-        returnTo: window.location.origin
-      }
+      logoutParams: { returnTo: window.location.origin }
     });
   };
 
-  // ---------------------------------------------------------
-  // PRIVATE FEEDBACK
-  // ---------------------------------------------------------
+  // Private feedback → Supabase
   document.getElementById("fb-submit").onclick = async () => {
-    const result = await api("/api/feedback/private", "POST", {
-      name: document.getElementById("fb-name").value,
-      email: document.getElementById("fb-email").value,
-      type: document.getElementById("fb-type").value,
-      message: document.getElementById("fb-message").value
-    });
+    const name = document.getElementById("fb-name").value.trim();
+    const email = document.getElementById("fb-email").value.trim();
+    const type = document.getElementById("fb-type").value;
+    const message = document.getElementById("fb-message").value.trim();
 
-    const status = document.getElementById("fb-status");
-    status.textContent = result.success ? "Sent!" : result.message;
+    if (!message) {
+      showStatus("fb-status", "Please enter a message.", "err");
+      return;
+    }
 
-    if (result.success) {
+    try {
+      const { error } = await window.supabase
+        .from("private_feedback")
+        .insert({ name, email, feedback_type: type, message });
+
+      if (error) throw error;
+
+      showStatus("fb-status", "Feedback sent! Thank you.", "ok");
       document.getElementById("fb-name").value = "";
       document.getElementById("fb-email").value = "";
       document.getElementById("fb-message").value = "";
+    } catch (err) {
+      showStatus("fb-status", "Failed to send: " + err.message, "err");
     }
   };
 
-  // ---------------------------------------------------------
-  // PUBLIC POST
-  // ---------------------------------------------------------
+  // Public post → Supabase
   document.getElementById("pub-submit").onclick = async () => {
-    const form = new FormData();
-    form.append("author", document.getElementById("pub-author").value);
-    form.append("message", document.getElementById("pub-message").value);
-    form.append("sensitive", document.getElementById("pub-anonymous").checked);
+    const author = document.getElementById("pub-author").value.trim();
+    const message = document.getElementById("pub-message").value.trim();
+    const isAnonymous = document.getElementById("pub-anonymous").checked;
+    const fileInput = document.getElementById("pub-image");
 
-    const file = document.getElementById("pub-image").files[0];
-    if (file) form.append("image", file);
+    if (!message) {
+      showStatus("pub-status", "Please enter a message.", "err");
+      return;
+    }
 
-    const result = await api("/api/feedback/public", "POST", form, true);
+    let imageUrl = null;
 
-    const status = document.getElementById("pub-status");
-    status.textContent = result.success ? "Posted!" : result.message;
+    if (fileInput.files && fileInput.files[0]) {
+      const file = fileInput.files[0];
+      const allowed = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+      if (!allowed.includes(file.type)) {
+        showStatus("pub-status", "Unsupported image type.", "err");
+        return;
+      }
 
-    if (result.success) {
+      const ext = file.name.split(".").pop();
+      const fileName = `posts/${Date.now()}.${ext}`;
+
+      try {
+        const { error: uploadErr } = await window.supabase.storage
+          .from("feedback")
+          .upload(fileName, file, { contentType: file.type });
+
+        if (uploadErr) throw uploadErr;
+
+        imageUrl = `${SUPABASE_URL}/storage/v1/object/public/feedback/${fileName}`;
+      } catch (err) {
+        showStatus("pub-status", "Image upload failed: " + err.message, "err");
+        return;
+      }
+    }
+
+    try {
+      const { error } = await window.supabase
+        .from("public_posts")
+        .insert({
+          author: isAnonymous ? "Anonymous" : (author || "Anonymous"),
+          message,
+          image_url: imageUrl,
+          is_anonymous: isAnonymous
+        });
+
+      if (error) throw error;
+
+      showStatus("pub-status", "Posted to the wall!", "ok");
       document.getElementById("pub-author").value = "";
       document.getElementById("pub-message").value = "";
       document.getElementById("pub-image").value = "";
       document.getElementById("pub-anonymous").checked = false;
+      loadPublicPosts();
+    } catch (err) {
+      showStatus("pub-status", "Failed to post: " + err.message, "err");
     }
-
-    loadPublicPosts();
   };
 
-  // ---------------------------------------------------------
-  // LOAD PUBLIC POSTS
-  // ---------------------------------------------------------
+  // Load public posts from Supabase
   async function loadPublicPosts() {
-    const res = await api("/api/feedback/public");
     const list = document.getElementById("pub-list");
-    list.innerHTML = "";
 
-    if (!res.items || res.items.length === 0) {
-      list.innerHTML = "<p class='small muted'>No posts yet</p>";
+    try {
+      const { data, error } = await window.supabase
+        .from("public_posts")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        list.innerHTML = '<div class="empty-state"><p>No posts yet. Be the first to share!</p></div>';
+        return;
+      }
+
+      list.innerHTML = "";
+      data.forEach(post => {
+        const div = document.createElement("div");
+        div.className = "post-card";
+
+        const author = post.author || "Anonymous";
+        const time = new Date(post.created_at).toLocaleString();
+
+        div.innerHTML = `
+          <div class="post-header">
+            <span class="post-author">${escapeHtml(author)}</span>
+            <span class="post-time">${time}</span>
+          </div>
+          <p class="post-message">${escapeHtml(post.message)}</p>
+        `;
+
+        if (post.image_url) {
+          const img = document.createElement("img");
+          img.src = post.image_url;
+          img.className = "post-image";
+          img.alt = "Attached image";
+          div.appendChild(img);
+        }
+
+        if (["admin", "founder"].includes(currentRole)) {
+          const del = document.createElement("button");
+          del.textContent = "Delete";
+          del.className = "post-delete";
+          del.onclick = async () => {
+            try {
+              const { error } = await window.supabase
+                .from("public_posts")
+                .delete()
+                .eq("id", post.id);
+              if (error) throw error;
+              loadPublicPosts();
+            } catch (err) {
+              alert("Delete failed: " + err.message);
+            }
+          };
+          div.appendChild(del);
+        }
+
+        list.appendChild(div);
+      });
+    } catch (err) {
+      list.innerHTML = '<div class="empty-state"><p>Failed to load posts.</p></div>';
+      console.error("Load posts error:", err);
+    }
+  }
+
+  // Admin notes → Supabase
+  document.getElementById("admin-submit").onclick = async () => {
+    const message = document.getElementById("admin-message").value.trim();
+
+    if (!message) {
+      showStatus("admin-status", "Please enter a note.", "err");
       return;
     }
 
-    res.items.forEach(post => {
-      const div = document.createElement("div");
-      div.className = "panel small";
+    const author = currentUser?.email || "Admin";
 
-      div.innerHTML = `
-        <div class="small muted">${post.author} — ${new Date(post.date).toLocaleString()}</div>
-        <p>${post.message}</p>
-      `;
+    try {
+      const { error } = await window.supabase
+        .from("admin_notes")
+        .insert({ author, message });
 
-      if (post.image) {
-        const img = document.createElement("img");
-        img.src = post.image;
-        img.className = "pub-image";
-        img.style.maxWidth = "100%";
-        div.appendChild(img);
-      }
+      if (error) throw error;
 
-      if (["admin", "founder"].includes(currentRole)) {
-        const del = document.createElement("button");
-        del.textContent = "Delete";
-        del.onclick = async () => {
-          await api(`/api/feedback/public/${post.id}`, "DELETE");
-          loadPublicPosts();
-        };
-        div.appendChild(del);
-      }
-
-      list.appendChild(div);
-    });
-  }
-
-  // ---------------------------------------------------------
-  // ADMIN NOTES
-  // ---------------------------------------------------------
-  document.getElementById("admin-submit").onclick = async () => {
-    const result = await api("/api/feedback/admin", "POST", {
-      message: document.getElementById("admin-message").value
-    });
-
-    const status = document.getElementById("admin-status");
-    status.textContent = result.success ? "Posted!" : result.message;
-
-    if (result.success) {
+      showStatus("admin-status", "Note posted!", "ok");
       document.getElementById("admin-message").value = "";
+      loadAdminNotes();
+    } catch (err) {
+      showStatus("admin-status", "Failed to post note: " + err.message, "err");
     }
-
-    loadAdminNotes();
   };
 
   async function loadAdminNotes() {
-    const res = await api("/api/feedback/admin");
     const list = document.getElementById("admin-list");
-    list.innerHTML = "";
 
-    if (!res.items || res.items.length === 0) {
-      list.innerHTML = "<p class='small muted'>No notes yet</p>";
-      return;
+    try {
+      const { data, error } = await window.supabase
+        .from("admin_notes")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        list.innerHTML = '<div class="empty-state"><p>No notes yet.</p></div>';
+        return;
+      }
+
+      list.innerHTML = "";
+      data.forEach(note => {
+        const div = document.createElement("div");
+        div.className = "admin-note";
+        div.innerHTML = `
+          <div class="post-header">
+            <span class="post-author" style="color: var(--neon-color)">${escapeHtml(note.author || "Admin")}</span>
+            <span class="post-time">${new Date(note.created_at).toLocaleString()}</span>
+          </div>
+          <p class="post-message">${escapeHtml(note.message)}</p>
+        `;
+        list.appendChild(div);
+      });
+    } catch (err) {
+      list.innerHTML = '<div class="empty-state"><p>Failed to load notes.</p></div>';
     }
-
-    res.items.forEach(note => {
-      const div = document.createElement("div");
-      div.className = "panel small";
-      div.innerHTML = `
-        <div class="small muted">${note.author} — ${new Date(note.date).toLocaleString()}</div>
-        <p>${note.message}</p>
-      `;
-      list.appendChild(div);
-    });
   }
 
-  // ---------------------------------------------------------
-  // INITIAL LOAD
-  // ---------------------------------------------------------
+  // Helpers
+  function showStatus(id, msg, type) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.className = "small " + (type === "ok" ? "ok" : type === "err" ? "err" : "muted");
+    setTimeout(() => { el.textContent = ""; }, 4000);
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str || "";
+    return div.innerHTML;
+  }
+
   await loadUserRole();
   await loadPublicPosts();
 });

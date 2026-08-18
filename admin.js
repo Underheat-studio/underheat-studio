@@ -1,11 +1,9 @@
-// UNDERHEAT Studio — Admin Panel (Auth0 + KV Roles)
+// UNDERHEAT Studio — Admin Panel (Auth0 + Role System)
+
+const FOUNDER_AUTH0_ID = "google-oauth2|113043894566831592879";
 
 document.addEventListener("DOMContentLoaded", async () => {
-  console.log("ADMIN.JS: Loaded");
 
-  // ---------------------------------------------------------
-  // ELEMENTS
-  // ---------------------------------------------------------
   const statusBox = document.getElementById("admin-status");
   const userList = document.getElementById("admin-user-list");
   const adminUserIndicator = document.getElementById("admin-user-indicator");
@@ -25,28 +23,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   const roleSelect = document.getElementById("role-select");
   const applyRoleBtn = document.getElementById("apply-role-btn");
 
-  // ---------------------------------------------------------
-  // AUTH0 INITIALIZATION
-  // ---------------------------------------------------------
   const auth0Client = await auth0.createAuth0Client({
     domain: "dev-2j6f0pfj7mazarrg.us.auth0.com",
     clientId: "dJvMivNXim7K63M3LSCd6w7NP0IDOWac",
     authorizationParams: {
+      audience: "https://cold-cell-aa07.jkmeiihh.workers.dev",
+      scope: "openid profile email read:role write:role",
       redirect_uri: window.location.origin
     }
   });
 
-  // ---------------------------------------------------------
-  // HANDLE REDIRECT CALLBACK
-  // ---------------------------------------------------------
   if (window.location.search.includes("code=") && window.location.search.includes("state=")) {
     await auth0Client.handleRedirectCallback();
     window.history.replaceState({}, "", window.location.pathname);
   }
 
-  // ---------------------------------------------------------
-  // GET TOKEN
-  // ---------------------------------------------------------
   async function getToken() {
     try {
       return await auth0Client.getTokenSilently();
@@ -55,17 +46,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  // ---------------------------------------------------------
-  // API BASE URL
-  // ---------------------------------------------------------
-  // Changed from hardcoded Cloudflare Worker URL to use configurable API_BASE_URL
-  // (set in config.js). This allows GitHub Pages to use either localhost:4000 for local dev
-  // or the production Cloudflare Worker URL when deployed.
   const API_BASE = window.API_BASE_URL || 'https://cold-cell-aa07.jkmeiihh.workers.dev';
 
-  // ---------------------------------------------------------
-  // API HELPER (FIXED)
-  // ---------------------------------------------------------
   async function api(path, method = "GET", body = null) {
     const token = await getToken();
     if (!token) return { success: false, message: "No token" };
@@ -89,9 +71,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  // ---------------------------------------------------------
-  // CHECK AUTHORIZATION
-  // ---------------------------------------------------------
   async function checkAuth() {
     const isAuthenticated = await auth0Client.isAuthenticated();
     if (!isAuthenticated) {
@@ -101,8 +80,25 @@ document.addEventListener("DOMContentLoaded", async () => {
       return null;
     }
 
-    const roleRes = await api("/api/role");
-    const role = roleRes.role || "guest";
+    // Client-side founder check first
+    const token = await getToken();
+    let role = "user";
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        if (payload.sub === FOUNDER_AUTH0_ID) {
+          role = "founder";
+        }
+      } catch (e) {
+        console.warn("Could not decode token:", e);
+      }
+    }
+
+    // If not founder from client check, try backend
+    if (role !== "founder") {
+      const roleRes = await api("/api/role");
+      role = roleRes.role || "guest";
+    }
 
     if (!["admin", "founder"].includes(role)) {
       statusBox.classList.remove("hidden");
@@ -114,25 +110,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     return role;
   }
 
-  // ---------------------------------------------------------
-  // LOAD USERS FROM KV
-  // ---------------------------------------------------------
   async function loadUsers() {
-    userList.innerHTML = "<p class='small muted'>Loading users...</p>";
-
     userList.innerHTML = `
       <p class="small muted">
-        User listing requires a /api/list-users endpoint.<br>
-        Your KV currently stores users by ID only.<br><br>
-        I can generate the Worker code for this if you want.
+        User management is handled through Cloudflare KV.<br>
+        Use the Role Editor to assign roles by user ID.
       </p>
     `;
   }
 
-  // ---------------------------------------------------------
-  // APPLY ROLE
-  // ---------------------------------------------------------
-  applyRoleBtn.addEventListener("click", async () => {
+  applyRoleBtn?.addEventListener("click", async () => {
     const targetUserId = roleUserId.value.trim();
     const newRole = roleSelect.value;
 
@@ -143,63 +130,49 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const res = await api("/api/set-role", "POST", {
-      targetUserId,
+      targetSub: targetUserId,
       newRole
     });
 
     statusBox.classList.remove("hidden");
 
     if (res.success) {
-      statusBox.textContent = `✓ Role updated to "${newRole}"`;
+      statusBox.textContent = `Role updated to "${newRole}"`;
     } else {
       statusBox.textContent = `Error: ${res.message}`;
     }
   });
 
-  // ---------------------------------------------------------
-  // NAVIGATION BETWEEN SECTIONS
-  // ---------------------------------------------------------
   function showSection(section) {
-    sectionUsers.classList.add("hidden");
-    sectionRoles.classList.add("hidden");
-    sectionLogs.classList.add("hidden");
+    sectionUsers?.classList.add("hidden");
+    sectionRoles?.classList.add("hidden");
+    sectionLogs?.classList.add("hidden");
 
-    navUsers.classList.remove("active");
-    navRoles.classList.remove("active");
-    navLogs.classList.remove("active");
+    navUsers?.classList.remove("active");
+    navRoles?.classList.remove("active");
+    navLogs?.classList.remove("active");
 
-    section.classList.remove("hidden");
+    section?.classList.remove("hidden");
 
-    if (section === sectionUsers) navUsers.classList.add("active");
-    if (section === sectionRoles) navRoles.classList.add("active");
-    if (section === sectionLogs) navLogs.classList.add("active");
+    if (section === sectionUsers) navUsers?.classList.add("active");
+    if (section === sectionRoles) navRoles?.classList.add("active");
+    if (section === sectionLogs) navLogs?.classList.add("active");
   }
 
-  navUsers.addEventListener("click", () => showSection(sectionUsers));
-  navRoles.addEventListener("click", () => showSection(sectionRoles));
-  navLogs.addEventListener("click", () => showSection(sectionLogs));
+  navUsers?.addEventListener("click", () => showSection(sectionUsers));
+  navRoles?.addEventListener("click", () => showSection(sectionRoles));
+  navLogs?.addEventListener("click", () => showSection(sectionLogs));
 
-  // ---------------------------------------------------------
-  // LOGOUT
-  // ---------------------------------------------------------
-  logoutBtn.addEventListener("click", () => {
+  logoutBtn?.addEventListener("click", () => {
     auth0Client.logout({
-      logoutParams: {
-        returnTo: window.location.origin
-      }
+      logoutParams: { returnTo: window.location.origin }
     });
   });
 
-  // ---------------------------------------------------------
-  // BACK BUTTON
-  // ---------------------------------------------------------
-  backBtn.addEventListener("click", () => {
+  backBtn?.addEventListener("click", () => {
     window.location.href = "/index.html";
   });
 
-  // ---------------------------------------------------------
-  // INITIALIZE
-  // ---------------------------------------------------------
   const role = await checkAuth();
   if (!role) return;
 
@@ -207,7 +180,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   adminUserIndicator.textContent = `${user.email} (${role})`;
 
   statusBox.classList.remove("hidden");
-  statusBox.textContent = "✓ Admin access granted.";
+  statusBox.textContent = "Admin access granted.";
 
   await loadUsers();
   showSection(sectionUsers);
